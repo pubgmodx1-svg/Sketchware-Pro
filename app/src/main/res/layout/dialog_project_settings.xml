@@ -44,7 +44,8 @@
                 android:layout_marginEnd="24dp"
                 android:layout_marginStart="24dp"
                 android:layout_marginTop="12dp"
-                android:hint="Target SDK version">
+                android:hint="Target SDK version"
+                android:helperText="Google Play requires API 36+ for new apps and updates. Test Android 16 behavior before publishing.">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/et_target_sdk_version"
