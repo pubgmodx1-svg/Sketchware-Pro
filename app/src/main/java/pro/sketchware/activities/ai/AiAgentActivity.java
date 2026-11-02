@@ -63,11 +63,18 @@ public class AiAgentActivity extends BaseAppCompatActivity {
     private EditText contextInput;
     private Button sendButton;
     private String model = DEFAULT_MODEL;
+    private final JSONArray conversation = new JSONArray();
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         model = getPrefs().getString(KEY_MODEL, DEFAULT_MODEL);
+        JSONObject systemMessage = new JSONObject();
+        try {
+            systemMessage.put("role", "system");
+            systemMessage.put("content", "You are an expert Android Studio-style coding assistant embedded in Sketchware Pro. Give complete, compatible Java/XML/Gradle solutions. Preserve existing APIs and project data. Never claim to have edited files or run builds. Prefer safe, reversible changes. If context is insufficient, state assumptions.");
+            conversation.put(systemMessage);
+        } catch (Exception ignored) { }
         buildScreen();
         appendMessage("Sketchware AI", "Hi! I can explain code, diagnose build errors, and propose Java/XML changes. I will not modify project files automatically. Add relevant code or an error log in Project context before sending.");
         if (getApiKey() == null) {
@@ -148,7 +155,14 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         String context = contextInput.getText().toString().trim();
         promptInput.setText("");
         contextInput.setText("");
-        appendMessage("You", prompt + (context.isEmpty() ? "" : "\n\nProject context:\n" + context));
+        String fullPrompt = prompt + (context.isEmpty() ? "" : "\n\nProject context:\n" + context);
+        appendMessage("You", fullPrompt);
+        try {
+            JSONObject userMessage = new JSONObject();
+            userMessage.put("role", "user");
+            userMessage.put("content", fullPrompt);
+            conversation.put(userMessage);
+        } catch (Exception ignored) { }
         appendMessage("Sketchware AI", "Thinking…");
         sendButton.setEnabled(false);
         ((InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE))
@@ -157,7 +171,7 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         executor.execute(() -> {
             String answer;
             try {
-                answer = requestOpenAi(apiKey, prompt, context);
+                answer = requestOpenAi(apiKey);
             } catch (Exception e) {
                 answer = "Request failed: " + safeMessage(e) + "\nCheck your API key, model, internet connection, and provider quota.";
             }
@@ -166,12 +180,20 @@ public class AiAgentActivity extends BaseAppCompatActivity {
                 int count = messages.getChildCount();
                 if (count > 0) messages.removeViewAt(count - 1);
                 appendMessage("Sketchware AI", result);
+                if (!result.startsWith("Request failed:")) {
+                    try {
+                        JSONObject assistantMessage = new JSONObject();
+                        assistantMessage.put("role", "assistant");
+                        assistantMessage.put("content", result);
+                        conversation.put(assistantMessage);
+                    } catch (Exception ignored) { }
+                }
                 sendButton.setEnabled(true);
             });
         });
     }
 
-    private String requestOpenAi(String apiKey, String prompt, String context) throws Exception {
+    private String requestOpenAi(String apiKey) throws Exception {
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL("https://api.openai.com/v1/chat/completions").openConnection();
@@ -182,20 +204,9 @@ public class AiAgentActivity extends BaseAppCompatActivity {
             connection.setRequestProperty("Authorization", "Bearer " + apiKey);
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
 
-            JSONObject system = new JSONObject();
-            system.put("role", "system");
-            system.put("content", "You are an expert Android Studio-style coding assistant embedded in Sketchware Pro. Give complete, compatible Java/XML/Gradle solutions. Preserve existing APIs and project data. Never claim to have edited files or run builds. Prefer safe, reversible changes. If context is insufficient, state assumptions.");
-
-            JSONObject user = new JSONObject();
-            user.put("role", "user");
-            user.put("content", prompt + (context.isEmpty() ? "" : "\n\nProject context:\n" + context));
-
-            JSONArray messagesArray = new JSONArray();
-            messagesArray.put(system);
-            messagesArray.put(user);
             JSONObject body = new JSONObject();
             body.put("model", model);
-            body.put("messages", messagesArray);
+            body.put("messages", new JSONArray(conversation.toString()));
             body.put("temperature", 0.2);
 
             try (OutputStream output = connection.getOutputStream()) {
@@ -211,8 +222,8 @@ public class AiAgentActivity extends BaseAppCompatActivity {
             }
             JSONObject json = new JSONObject(response.toString());
             if (status < 200 || status >= 300) {
-                String message = json.optJSONObject("error") == null ? "HTTP " + status :
-                        json.optJSONObject("error").optString("message", "HTTP " + status);
+                JSONObject error = json.optJSONObject("error");
+                String message = error == null ? "HTTP " + status : error.optString("message", "HTTP " + status);
                 throw new IllegalStateException(message);
             }
             JSONArray choices = json.optJSONArray("choices");
