@@ -63,6 +63,8 @@ public class AiAgentActivity extends BaseAppCompatActivity {
     private static final String KEY_PROJECT_TREE = "project_tree_uri";
     private static final int REQUEST_PROJECT_FOLDER = 7204;
     private Uri projectTreeUri;
+    private Button projectButton;
+    private Button auditButton;
     private static final String DEFAULT_MODEL = "gpt-4o-mini";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -85,7 +87,7 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         JSONObject systemMessage = new JSONObject();
         try {
             systemMessage.put("role", "system");
-            systemMessage.put("content", "You are an expert Android Studio-style coding assistant embedded in Sketchware Pro. Give complete, compatible Java/XML/Gradle solutions. Preserve existing APIs and project data. Never claim to have edited files or run builds. Prefer safe, reversible changes. If context is insufficient, state assumptions.");
+            systemMessage.put("content", "You are the autonomous Sketchware Pro project engineering agent. Work in clear phases: inspect supplied project snapshot, identify the highest-impact issues, make a prioritized plan, then provide complete file-level replacement code or exact patch instructions. Always preserve backward compatibility with existing Sketchware projects, block data, components, project databases and user files. Never recommend destructive migrations or blind dependency upgrades. For Android builds, diagnose the first/root compiler error before cascading errors. Check AndroidManifest exported components, permissions, min/target SDK behavior, Gradle/AGP compatibility, resource references, duplicate classes, signing and Android App Bundle readiness when relevant. For Play Console readiness, explain current policy constraints and distinguish the Sketchware IDE from apps built by it. Never claim to have edited files, run a build, tested an APK or guaranteed Play approval. Flag risky changes and require explicit user approval before applying them. Return actionable steps and complete code, not vague advice.");
             conversation.put(systemMessage);
         } catch (Exception ignored) { }
         buildScreen();
@@ -120,13 +122,13 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         hint.setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant));
         root.addView(hint);
 
-        Button projectButton = new Button(this);
+        projectButton = new Button(this);
         projectButton.setText(projectTreeUri == null ? "Select Project Folder" : "Change Project Folder");
         projectButton.setOnClickListener(v -> openProjectFolderPicker());
         LinearLayout projectButtonRow = new LinearLayout(this);
         projectButtonRow.setPadding(dp(12), 0, dp(12), 0);
         projectButtonRow.addView(projectButton, new LinearLayout.LayoutParams(-1, -2));
-        root.addView(projectButtonRow);
+        root.addView(projectButtonRow);\n\n        auditButton = new Button(this);\n        auditButton.setText("Run Automatic Project Audit");\n        auditButton.setOnClickListener(v -> runAutomaticAudit());\n        LinearLayout auditRow = new LinearLayout(this);\n        auditRow.setPadding(dp(12), 0, dp(12), dp(4));\n        auditRow.addView(auditButton, new LinearLayout.LayoutParams(-1, -2));\n        root.addView(auditRow);
 
         scrollView = new ScrollView(this);
         scrollView.setFillViewport(false);
@@ -173,7 +175,7 @@ public class AiAgentActivity extends BaseAppCompatActivity {
 
     private void openProjectFolderPicker() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         try {
             startActivityForResult(intent, REQUEST_PROJECT_FOLDER);
         } catch (Exception e) {
@@ -267,6 +269,21 @@ public class AiAgentActivity extends BaseAppCompatActivity {
                 || lower.endsWith(".toml") || lower.endsWith(".yml") || lower.endsWith(".yaml")) return true;
         return "text/plain".equals(mime) || "application/xml".equals(mime)
                 || "application/json".equals(mime);
+    }
+
+    private void runAutomaticAudit() {
+        if (projectTreeUri == null) {
+            Toast.makeText(this, "Select a project folder first.", Toast.LENGTH_SHORT).show();
+            openProjectFolderPicker();
+            return;
+        }
+        if (contextInput.getText().toString().trim().length() < 20) {
+            loadProjectContext(projectTreeUri);
+            Toast.makeText(this, "Scanning project. Tap audit again after the scan completes.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        promptInput.setText("Perform a complete automatic engineering audit of this Sketchware project. Inspect the supplied source snapshot and return: (1) project structure and detected technology, (2) critical compile/runtime risks, (3) backward-compatibility risks for old Sketchware projects, (4) Play Console release-readiness checks including target API, permissions, exported components, signing and AAB considerations, (5) prioritized fixes with exact file names and complete replacement code for the highest-priority fixes. Do not invent files or APIs. Separate verified observations from assumptions. Do not recommend destructive changes or dependency upgrades without compatibility evidence.");
+        sendPrompt();
     }
 
     private void sendPrompt() {
