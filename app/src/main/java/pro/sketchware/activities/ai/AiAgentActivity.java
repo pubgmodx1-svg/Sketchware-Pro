@@ -128,7 +128,15 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         LinearLayout projectButtonRow = new LinearLayout(this);
         projectButtonRow.setPadding(dp(12), 0, dp(12), 0);
         projectButtonRow.addView(projectButton, new LinearLayout.LayoutParams(-1, -2));
-        root.addView(projectButtonRow);\n\n        auditButton = new Button(this);\n        auditButton.setText("Run Automatic Project Audit");\n        auditButton.setOnClickListener(v -> runAutomaticAudit());\n        LinearLayout auditRow = new LinearLayout(this);\n        auditRow.setPadding(dp(12), 0, dp(12), dp(4));\n        auditRow.addView(auditButton, new LinearLayout.LayoutParams(-1, -2));\n        root.addView(auditRow);
+        root.addView(projectButtonRow);
+
+        auditButton = new Button(this);
+        auditButton.setText("Run Automatic Project Audit");
+        auditButton.setOnClickListener(v -> runAutomaticAudit());
+        LinearLayout auditRow = new LinearLayout(this);
+        auditRow.setPadding(dp(12), 0, dp(12), dp(4));
+        auditRow.addView(auditButton, new LinearLayout.LayoutParams(-1, -2));
+        root.addView(auditRow);
 
         scrollView = new ScrollView(this);
         scrollView.setFillViewport(false);
@@ -240,7 +248,10 @@ public class AiAgentActivity extends BaseAppCompatActivity {
                                     if (accepted < read) break;
                                 }
                                 if (content.length() > 0) {
-                                    result.append("\n\n===== ").append(name).append(" =====\n");
+                                    result.append("
+
+===== ").append(name).append(" =====
+");
                                     result.append(content);
                                     files++;
                                 }
@@ -249,12 +260,15 @@ public class AiAgentActivity extends BaseAppCompatActivity {
                     } catch (Exception ignored) { }
                 }
             } catch (Exception e) {
-                result.append("\nProject scan warning: ").append(safeMessage(e));
+                result.append("
+Project scan warning: ").append(safeMessage(e));
             }
             final String projectText = result.toString();
             mainHandler.post(() -> {
                 if (isFinishing() || isDestroyed()) return;
-                contextInput.setText("Selected project folder: " + tree + "\nRead-only snapshot (selected text/config files):\n" + projectText);
+                contextInput.setText("Selected project folder: " + tree + "
+Read-only snapshot (selected text/config files):
+" + projectText);
                 Toast.makeText(this, "Project context loaded (read-only). Review it before sending.", Toast.LENGTH_LONG).show();
             });
         });
@@ -297,7 +311,10 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         String context = contextInput.getText().toString().trim();
         promptInput.setText("");
         contextInput.setText("");
-        String fullPrompt = prompt + (context.isEmpty() ? "" : "\n\nProject context:\n" + context);
+        String fullPrompt = prompt + (context.isEmpty() ? "" : "
+
+Project context:
+" + context);
         appendMessage("You", fullPrompt);
         try {
             JSONObject userMessage = new JSONObject();
@@ -315,7 +332,8 @@ public class AiAgentActivity extends BaseAppCompatActivity {
             try {
                 answer = requestOpenAi(apiKey);
             } catch (Exception e) {
-                answer = "Request failed: " + safeMessage(e) + "\nCheck your API key, model, internet connection, and provider quota.";
+                answer = "Request failed: " + safeMessage(e) + "
+Check your API key, model, internet connection, and provider quota.";
             }
             final String result = answer;
             mainHandler.post(() -> {
@@ -427,7 +445,8 @@ public class AiAgentActivity extends BaseAppCompatActivity {
 
     private void appendMessage(String sender, String text) {
         TextView bubble = new TextView(this);
-        bubble.setText(sender + "\n" + text);
+        bubble.setText(sender + "
+" + text);
         bubble.setTextSize(14);
         bubble.setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurface));
         bubble.setPadding(dp(14), dp(10), dp(14), dp(10));
