@@ -5,6 +5,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.content.SharedPreferences;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.besome.sketch.lib.base.BaseAppCompatActivity;
@@ -31,6 +32,7 @@ public class CodeViewerActivity extends BaseAppCompatActivity {
         editorPrefs = getSharedPreferences("dce", MODE_PRIVATE);
         binding = ActivityCodeViewerBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        setSupportActionBar(binding.toolbar);
 
         var code = getIntent().getStringExtra("code");
         var scheme = getIntent().getStringExtra("scheme");
@@ -80,7 +82,7 @@ public class CodeViewerActivity extends BaseAppCompatActivity {
     }
 
     private void loadColorScheme(String scheme) {
-        if (scheme.equals(SCHEME_XML)) {
+        if (SCHEME_XML.equals(scheme)) {
             EditorUtils.loadXmlConfig(binding.editor);
         } else {
             EditorUtils.loadJavaConfig(binding.editor);
