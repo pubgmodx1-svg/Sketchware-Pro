@@ -1,4 +1,9 @@
-<menu xmlns:android="http://schemas.android.com/apk/res/android">\n\n    <item\n        android:id="@+id/ai_coding_agent"\n        android:icon="@drawable/ic_mtrl_speech"\n        android:title="AI Coding Agent" />
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/ai_coding_agent"
+        android:icon="@drawable/ic_mtrl_speech"
+        android:title="AI Coding Agent" />
 
     <item
         android:id="@+id/about_team"
