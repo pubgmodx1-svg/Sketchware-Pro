@@ -83,7 +83,7 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         toolbar.setTitle("AI Coding Agent");
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
         toolbar.setNavigationOnClickListener(v -> finish());
-        toolbar.inflateMenu(0);
+        
         toolbar.setOnMenuItemClickListener(item -> false);
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(56)));
 
@@ -127,7 +127,7 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         composer.addView(promptInput, new LinearLayout.LayoutParams(0, -2, 1f));
         sendButton = new Button(this);
         sendButton.setText("Send");
-        composer.addView(sendButton, new LinearLayout.LayoutParams(-2, -wrap()));
+        composer.addView(sendButton, new LinearLayout.LayoutParams(-2, -2));
         root.addView(composer);
         sendButton.setOnClickListener(v -> sendPrompt());
         promptInput.setOnEditorActionListener((v, actionId, event) -> {
