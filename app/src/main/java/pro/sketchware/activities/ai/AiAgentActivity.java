@@ -248,10 +248,7 @@ public class AiAgentActivity extends BaseAppCompatActivity {
                                     if (accepted < read) break;
                                 }
                                 if (content.length() > 0) {
-                                    result.append("
-
-===== ").append(name).append(" =====
-");
+                                    result.append("\n\n===== ").append(name).append(" =====\n");
                                     result.append(content);
                                     files++;
                                 }
@@ -260,15 +257,12 @@ public class AiAgentActivity extends BaseAppCompatActivity {
                     } catch (Exception ignored) { }
                 }
             } catch (Exception e) {
-                result.append("
-Project scan warning: ").append(safeMessage(e));
+                result.append("\nProject scan warning: ").append(safeMessage(e));
             }
             final String projectText = result.toString();
             mainHandler.post(() -> {
                 if (isFinishing() || isDestroyed()) return;
-                contextInput.setText("Selected project folder: " + tree + "
-Read-only snapshot (selected text/config files):
-" + projectText);
+                contextInput.setText("Selected project folder: " + tree + "\nRead-only snapshot (selected text/config files):\n" + projectText);
                 Toast.makeText(this, "Project context loaded (read-only). Review it before sending.", Toast.LENGTH_LONG).show();
             });
         });
@@ -311,10 +305,7 @@ Read-only snapshot (selected text/config files):
         String context = contextInput.getText().toString().trim();
         promptInput.setText("");
         contextInput.setText("");
-        String fullPrompt = prompt + (context.isEmpty() ? "" : "
-
-Project context:
-" + context);
+        String fullPrompt = prompt + (context.isEmpty() ? "" : "\n\nProject context:\n" + context);
         appendMessage("You", fullPrompt);
         try {
             JSONObject userMessage = new JSONObject();
@@ -332,8 +323,7 @@ Project context:
             try {
                 answer = requestOpenAi(apiKey);
             } catch (Exception e) {
-                answer = "Request failed: " + safeMessage(e) + "
-Check your API key, model, internet connection, and provider quota.";
+                answer = "Request failed: " + safeMessage(e) + "\nCheck your API key, model, internet connection, and provider quota.";
             }
             final String result = answer;
             mainHandler.post(() -> {
@@ -445,8 +435,7 @@ Check your API key, model, internet connection, and provider quota.";
 
     private void appendMessage(String sender, String text) {
         TextView bubble = new TextView(this);
-        bubble.setText(sender + "
-" + text);
+        bubble.setText(sender + "\n" + text);
         bubble.setTextSize(14);
         bubble.setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurface));
         bubble.setPadding(dp(14), dp(10), dp(14), dp(10));
