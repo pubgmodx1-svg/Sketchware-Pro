@@ -90,8 +90,14 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         toolbar.setTitle("AI Coding Agent");
         toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material);
         toolbar.setNavigationOnClickListener(v -> finish());
-        
-        toolbar.setOnMenuItemClickListener(item -> false);
+        toolbar.getMenu().add(0, 1001, 0, "AI Settings");
+        toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == 1001) {
+                showApiKeyDialog();
+                return true;
+            }
+            return false;
+        });
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, dp(56)));
 
         TextView hint = new TextView(this);
