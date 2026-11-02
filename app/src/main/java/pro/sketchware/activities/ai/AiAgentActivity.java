@@ -1,7 +1,11 @@
 package pro.sketchware.activities.ai;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.DocumentsContract;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -36,6 +40,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
+import java.util.ArrayList;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -54,6 +60,9 @@ public class AiAgentActivity extends BaseAppCompatActivity {
     private static final String KEY_CIPHER = "api_key_ciphertext";
     private static final String KEY_IV = "api_key_iv";
     private static final String KEY_MODEL = "model";
+    private static final String KEY_PROJECT_TREE = "project_tree_uri";
+    private static final int REQUEST_PROJECT_FOLDER = 7204;
+    private Uri projectTreeUri;
     private static final String DEFAULT_MODEL = "gpt-4o-mini";
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -69,6 +78,10 @@ public class AiAgentActivity extends BaseAppCompatActivity {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         model = getPrefs().getString(KEY_MODEL, DEFAULT_MODEL);
+        String savedTree = getPrefs().getString(KEY_PROJECT_TREE, null);
+        if (savedTree != null) {
+            try { projectTreeUri = Uri.parse(savedTree); } catch (Exception ignored) { }
+        }
         JSONObject systemMessage = new JSONObject();
         try {
             systemMessage.put("role", "system");
@@ -106,6 +119,14 @@ public class AiAgentActivity extends BaseAppCompatActivity {
         hint.setPadding(dp(16), dp(8), dp(16), dp(8));
         hint.setTextColor(resolveColor(com.google.android.material.R.attr.colorOnSurfaceVariant));
         root.addView(hint);
+
+        Button projectButton = new Button(this);
+        projectButton.setText(projectTreeUri == null ? "Select Project Folder" : "Change Project Folder");
+        projectButton.setOnClickListener(v -> openProjectFolderPicker());
+        LinearLayout projectButtonRow = new LinearLayout(this);
+        projectButtonRow.setPadding(dp(12), 0, dp(12), 0);
+        projectButtonRow.addView(projectButton, new LinearLayout.LayoutParams(-1, -2));
+        root.addView(projectButtonRow);
 
         scrollView = new ScrollView(this);
         scrollView.setFillViewport(false);
@@ -148,6 +169,104 @@ public class AiAgentActivity extends BaseAppCompatActivity {
             return true;
         });
         setContentView(root);
+    }
+
+    private void openProjectFolderPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, REQUEST_PROJECT_FOLDER);
+        } catch (Exception e) {
+            Toast.makeText(this, "Folder picker is not available on this device.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != REQUEST_PROJECT_FOLDER || resultCode != RESULT_OK || data == null) return;
+        Uri tree = data.getData();
+        if (tree == null) return;
+        try {
+            int flags = data.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            getContentResolver().takePersistableUriPermission(tree, flags);
+            projectTreeUri = tree;
+            getPrefs().edit().putString(KEY_PROJECT_TREE, tree.toString()).apply();
+            loadProjectContext(tree);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not access this folder: " + safeMessage(e), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void loadProjectContext(Uri tree) {
+        executor.execute(() -> {
+            StringBuilder result = new StringBuilder();
+            ArrayList<Uri> pending = new ArrayList<>();
+            try {
+                String rootId = DocumentsContract.getTreeDocumentId(tree);
+                pending.add(DocumentsContract.buildDocumentUriUsingTree(tree, rootId));
+                int files = 0;
+                while (!pending.isEmpty() && files < 35 && result.length() < 45000) {
+                    Uri folder = pending.remove(0);
+                    String folderId = DocumentsContract.getDocumentId(folder);
+                    Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, folderId);
+                    try (Cursor cursor = getContentResolver().query(children,
+                            new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                                    DocumentsContract.Document.COLUMN_MIME_TYPE},
+                            null, null, null)) {
+                        if (cursor == null) continue;
+                        while (cursor.moveToNext() && files < 35 && result.length() < 45000) {
+                            String id = cursor.getString(0);
+                            String name = cursor.getString(1);
+                            String mime = cursor.getString(2);
+                            if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+                                if (pending.size() < 100) pending.add(DocumentsContract.buildDocumentUriUsingTree(tree, id));
+                                continue;
+                            }
+                            if (!isReadableProjectText(name, mime)) continue;
+                            Uri file = DocumentsContract.buildDocumentUriUsingTree(tree, id);
+                            try (InputStream in = getContentResolver().openInputStream(file)) {
+                                if (in == null) continue;
+                                byte[] buffer = new byte[8192];
+                                int read, total = 0;
+                                StringBuilder content = new StringBuilder();
+                                while ((read = in.read(buffer)) > 0 && total < 12000) {
+                                    int accepted = Math.min(read, 12000 - total);
+                                    content.append(new String(buffer, 0, accepted, StandardCharsets.UTF_8));
+                                    total += accepted;
+                                    if (accepted < read) break;
+                                }
+                                if (content.length() > 0) {
+                                    result.append("\n\n===== ").append(name).append(" =====\n");
+                                    result.append(content);
+                                    files++;
+                                }
+                            } catch (Exception ignored) { }
+                        }
+                    } catch (Exception ignored) { }
+                }
+            } catch (Exception e) {
+                result.append("\nProject scan warning: ").append(safeMessage(e));
+            }
+            final String projectText = result.toString();
+            mainHandler.post(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                contextInput.setText("Selected project folder: " + tree + "\nRead-only snapshot (selected text/config files):\n" + projectText);
+                Toast.makeText(this, "Project context loaded (read-only). Review it before sending.", Toast.LENGTH_LONG).show();
+            });
+        });
+    }
+
+    private boolean isReadableProjectText(String name, String mime) {
+        if (name == null || name.startsWith(".")) return false;
+        String lower = name.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".java") || lower.endsWith(".kt") || lower.endsWith(".xml")
+                || lower.endsWith(".gradle") || lower.endsWith(".properties") || lower.endsWith(".json")
+                || lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".pro")
+                || lower.endsWith(".toml") || lower.endsWith(".yml") || lower.endsWith(".yaml")) return true;
+        return "text/plain".equals(mime) || "application/xml".equals(mime)
+                || "application/json".equals(mime);
     }
 
     private void sendPrompt() {
