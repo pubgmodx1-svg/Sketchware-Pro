@@ -69,6 +69,42 @@ public class ProjectSettingsDialog {
         };
 
         binding.save.setOnClickListener(v -> {
+            binding.tilMinimumSdkVersion.setError(null);
+            binding.tilTargetSdkVersion.setError(null);
+
+            String minText = binding.etMinimumSdkVersion.getText() == null
+                    ? "" : binding.etMinimumSdkVersion.getText().toString().trim();
+            String targetText = binding.etTargetSdkVersion.getText() == null
+                    ? "" : binding.etTargetSdkVersion.getText().toString().trim();
+
+            int minSdk;
+            int targetSdk;
+            try {
+                minSdk = Integer.parseInt(minText);
+            } catch (NumberFormatException e) {
+                binding.tilMinimumSdkVersion.setError("Enter a valid minimum SDK version");
+                return;
+            }
+            try {
+                targetSdk = Integer.parseInt(targetText);
+            } catch (NumberFormatException e) {
+                binding.tilTargetSdkVersion.setError("Enter a valid target SDK version");
+                return;
+            }
+
+            if (minSdk < 1) {
+                binding.tilMinimumSdkVersion.setError("Minimum SDK must be at least 1");
+                return;
+            }
+            if (targetSdk < 1) {
+                binding.tilTargetSdkVersion.setError("Target SDK must be at least 1");
+                return;
+            }
+            if (minSdk > targetSdk) {
+                binding.tilTargetSdkVersion.setError("Target SDK must be equal to or higher than Minimum SDK");
+                return;
+            }
+
             settings.setValues(preferences);
             dialog.dismiss();
         });
