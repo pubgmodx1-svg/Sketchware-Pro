@@ -71,8 +71,6 @@ public class MainDrawer extends NavigationView {
             @StringRes int url = -1;
             if (id == R.id.social_discord) {
                 url = R.string.link_discord_invite;
-            } else if (id == R.id.social_telegram) {
-                url = R.string.link_telegram_invite;
             } else if (id == R.id.social_github) {
                 url = R.string.link_github_url;
             } else if (id == R.id.app_sw_assist) {
@@ -91,11 +89,7 @@ public class MainDrawer extends NavigationView {
             activity.startActivity(new Intent(activity, AiAgentActivity.class));
             return;
         }
-        if (id == R.id.about_team) {
-            Intent intent = new Intent(activity, AboutActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            activity.startActivity(intent);
-        } else if (id == R.id.changelog) {
+        if (id == R.id.changelog) {
             Intent intent = new Intent(activity, AboutActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
             intent.putExtra("select", "changelog");
