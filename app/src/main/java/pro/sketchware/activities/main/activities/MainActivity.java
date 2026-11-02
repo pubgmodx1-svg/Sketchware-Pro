@@ -258,7 +258,11 @@ public class MainActivity extends BasePermissionAppCompatActivity {
 
         if (savedInstanceState != null) {
             projectsFragment = (ProjectsFragment) getSupportFragmentManager().findFragmentByTag(PROJECTS_FRAGMENT_TAG);
-            currentNavItemId = savedInstanceState.getInt("selected_tab_id");
+            currentNavItemId = savedInstanceState.getInt("selected_tab_id", R.id.item_projects);
+            // Older app versions also stored the removed Store tab ID. Always restore safely to Projects.
+            if (currentNavItemId != R.id.item_projects) {
+                currentNavItemId = R.id.item_projects;
+            }
             Fragment current = getFragmentForNavId(currentNavItemId);
             if (current instanceof ProjectsFragment) {
                 navigateToProjectsFragment();
@@ -274,7 +278,7 @@ public class MainActivity extends BasePermissionAppCompatActivity {
         if (navItemId == R.id.item_projects) {
             return projectsFragment;
         }
-        throw new IllegalArgumentException();
+        return projectsFragment;
     }
 
     @Override
