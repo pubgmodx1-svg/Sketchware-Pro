@@ -74,7 +74,11 @@ public class ProjectSettings {
 
         if (FileUtil.isExistFile(path)) {
             try {
-                hashmap = new Gson().fromJson(FileUtil.readFile(path).trim(), Helper.TYPE_STRING_MAP);
+                HashMap<String, String> loadedSettings =
+                        new Gson().fromJson(FileUtil.readFile(path).trim(), Helper.TYPE_STRING_MAP);
+                // A valid JSON "null" value produces a null map. Keep settings usable
+                // without changing the existing project_config format.
+                hashmap = loadedSettings == null ? new HashMap<>() : loadedSettings;
             } catch (Exception e) {
                 Log.e("ProjectSettings", "Failed to read project settings for project " + sc_id + "!", e);
                 hashmap = new HashMap<>();
@@ -108,15 +112,12 @@ public class ProjectSettings {
     }
 
     public String getValue(String key, String defaultValue) {
-        if (hashmap != null && hashmap.containsKey(key)) {
-            if (!hashmap.get(key).isEmpty()) {
-                return hashmap.get(key);
-            } else {
-                return defaultValue;
-            }
-        } else {
+        if (hashmap == null || !hashmap.containsKey(key)) {
             return defaultValue;
         }
+
+        String value = hashmap.get(key);
+        return value == null || value.isEmpty() ? defaultValue : value;
     }
 
     private void processView(View v) {
