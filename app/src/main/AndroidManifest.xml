@@ -28,6 +28,11 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="p">
         <activity
+            android:name=".activities.ai.AiAgentActivity"
+            android:exported="false"
+            android:label="AI Coding Agent"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".activities.iconcreator.IconCreatorActivity"
             android:exported="false"
             android:label="@string/title_activity_icon_creator"
