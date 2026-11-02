@@ -26,7 +26,8 @@ import dev.chrisbanes.insetter.Insetter;
 import dev.chrisbanes.insetter.Side;
 import mod.hilal.saif.activities.tools.AppSettings;
 import pro.sketchware.R;
-import pro.sketchware.activities.about.AboutActivity;\nimport pro.sketchware.activities.ai.AiAgentActivity;
+import pro.sketchware.activities.about.AboutActivity;
+import pro.sketchware.activities.ai.AiAgentActivity;
 import pro.sketchware.utility.UI;
 
 public class MainDrawer extends NavigationView {
@@ -86,6 +87,10 @@ public class MainDrawer extends NavigationView {
 
     private void initializeDrawerItems(@IdRes int id) {
         Activity activity = unwrap(getContext());
+        if (id == R.id.ai_coding_agent) {
+            activity.startActivity(new Intent(activity, AiAgentActivity.class));
+            return;
+        }
         if (id == R.id.about_team) {
             Intent intent = new Intent(activity, AboutActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
