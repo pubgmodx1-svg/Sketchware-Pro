@@ -243,14 +243,49 @@ public class ProguardHandler {
     }
 
     public void start(BuildProgressReceiver progressReceiver, ProjectBuilder builder) throws IOException {
-        if (isShrinkingEnabled()) {
-            if (isR8Enabled()) {
-                progressReceiver.onProgress("Running R8 on classes...", 15);
-                builder.runR8();
-            } else {
-                progressReceiver.onProgress("ProGuarding classes...", 16);
-                builder.runProguard();
+        if (!isShrinkingEnabled()) {
+            return;
+        }
+
+        if (!isR8Enabled()) {
+            progressReceiver.onProgress("ProGuarding classes...", 16);
+            builder.runProguard();
+            return;
+        }
+
+        progressReceiver.onProgress("Running R8 on classes...", 15);
+        try {
+            builder.runR8();
+        } catch (OutOfMemoryError memoryError) {
+            // R8 can exceed the Android app process heap on large user projects.
+            // Switch this project to the existing ProGuard + D8 pipeline rather
+            // than crashing the Sketchware process. The choice is persisted per
+            // project so the next build does not repeat the same OOM.
+            System.gc();
+            progressReceiver.onProgress("R8 ran out of memory. Switching this project to the compatible ProGuard fallback...", 16);
+            setR8Enabled(false);
+
+            java.io.File dexOutput = new java.io.File(builder.yq.binDirectoryPath, "dex");
+            deleteRecursively(dexOutput);
+            builder.runProguard();
+        }
+    }
+
+    private void deleteRecursively(java.io.File file) {
+        if (file == null || !file.exists()) {
+            return;
+        }
+        if (file.isDirectory()) {
+            java.io.File[] children = file.listFiles();
+            if (children != null) {
+                for (java.io.File child : children) {
+                    deleteRecursively(child);
+                }
             }
         }
+        // Best effort: ProGuard/D8 will report a useful error if a stale file
+        // cannot be removed and prevents the next build.
+        //noinspection ResultOfMethodCallIgnored
+        file.delete();
     }
 }
