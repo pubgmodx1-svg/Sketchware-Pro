@@ -66,7 +66,7 @@ public class AiAgentActivity extends BaseAppCompatActivity {
     private final JSONArray conversation = new JSONArray();
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         model = getPrefs().getString(KEY_MODEL, DEFAULT_MODEL);
         JSONObject systemMessage = new JSONObject();
@@ -371,7 +371,7 @@ public class AiAgentActivity extends BaseAppCompatActivity {
     }
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         super.onDestroy();
         executor.shutdownNow();
     }
