@@ -130,82 +130,65 @@ public class ProguardHandler {
         return new Gson().toJson(defaultConfig);
     }
 
+    /**
+     * Reads the existing per-project ProGuard settings without allowing a JSON
+     * {@code null} value or malformed file to crash settings updates.
+     */
+    private HashMap<String, String> readConfig() {
+        try {
+            HashMap<String, String> config =
+                    new Gson().fromJson(FileUtil.readFile(config_path), Helper.TYPE_STRING_MAP);
+            return config == null ? new HashMap<>() : config;
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
+
     public String getCustomProguardRules() {
         return DEFAULT_PROGUARD_RULES_PATH;
     }
 
     public boolean isDebugFilesEnabled() {
-        boolean debugFiles = true;
-        if (FileUtil.isExistFile(config_path)) {
-            try {
-                HashMap<String, String> config = new Gson().fromJson(FileUtil.readFile(config_path), Helper.TYPE_STRING_MAP);
-
-                if (!config.containsKey("debug")) return false;
-
-                String debug = config.get("debug");
-                if (debug != null) {
-                    debugFiles = debug.equals("true");
-                }
-
-            } catch (Exception e) {
-                debugFiles = false;
-            }
+        if (!FileUtil.isExistFile(config_path)) {
+            return true;
         }
 
-        return debugFiles;
+        HashMap<String, String> config = readConfig();
+        if (!config.containsKey("debug")) {
+            return false;
+        }
+
+        String debug = config.get("debug");
+        return debug == null || debug.equals("true");
     }
 
     public boolean isShrinkingEnabled() {
-        boolean proguardEnabled = true;
-        if (FileUtil.isExistFile(config_path)) {
-            try {
-                HashMap<String, String> config = new Gson().fromJson(FileUtil.readFile(config_path), Helper.TYPE_STRING_MAP);
-
-                String enabled = config.get("enabled");
-                if (enabled == null) {
-                    proguardEnabled = false;
-                } else {
-                    proguardEnabled = enabled.equals("true");
-                }
-
-            } catch (Exception e) {
-                proguardEnabled = false;
-            }
+        if (!FileUtil.isExistFile(config_path)) {
+            return true;
         }
 
-        return proguardEnabled;
+        String enabled = readConfig().get("enabled");
+        return enabled != null && enabled.equals("true");
     }
 
     public void setProguardEnabled(boolean proguardEnabled) {
-        HashMap<String, String> config = new Gson().fromJson(FileUtil.readFile(config_path), Helper.TYPE_STRING_MAP);
+        HashMap<String, String> config = readConfig();
         config.put("enabled", String.valueOf(proguardEnabled));
 
         FileUtil.writeFile(config_path, new Gson().toJson(config));
     }
 
     public boolean isR8Enabled() {
-        boolean r8Enabled = true;
-        if (FileUtil.isExistFile(config_path)) {
-            try {
-                var config = new Gson().fromJson(FileUtil.readFile(config_path), Helper.TYPE_STRING_MAP);
-
-                String enabled = config.get("r8");
-                if (enabled == null) {
-                    r8Enabled = false;
-                } else {
-                    r8Enabled = enabled.equals("true");
-                }
-
-            } catch (Exception e) {
-                r8Enabled = false;
-            }
+        if (!FileUtil.isExistFile(config_path)) {
+            return true;
         }
 
-        return r8Enabled;
+        String enabled = readConfig().get("r8");
+        return enabled != null && enabled.equals("true");
     }
 
     public void setR8Enabled(boolean r8Enabled) {
-        var config = new Gson().fromJson(FileUtil.readFile(config_path), Helper.TYPE_STRING_MAP);
+        HashMap<String, String> config = readConfig();
         config.put("r8", String.valueOf(r8Enabled));
 
         FileUtil.writeFile(config_path, new Gson().toJson(config));
@@ -232,7 +215,7 @@ public class ProguardHandler {
     }
 
     public void setDebugEnabled(boolean debugEnabled) {
-        HashMap<String, String> config = new Gson().fromJson(FileUtil.readFile(config_path), Helper.TYPE_STRING_MAP);
+        HashMap<String, String> config = readConfig();
         config.put("debug", String.valueOf(debugEnabled));
 
         FileUtil.writeFile(config_path, new Gson().toJson(config));
