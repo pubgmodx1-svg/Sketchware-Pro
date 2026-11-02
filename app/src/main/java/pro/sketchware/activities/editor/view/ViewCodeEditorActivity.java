@@ -111,8 +111,10 @@ public class ViewCodeEditorActivity extends BaseAppCompatActivity {
         content = getIntent().getStringExtra("content");
         editor = binding.editor;
         editor.setTypefaceText(EditorUtils.getTypeface(this));
-        editor.setTextSize(14);
-        editor.setText(content);
+        int savedFontSize = prefs.getInt("font_size", 14);
+        editor.setTextSize(Math.max(10, Math.min(savedFontSize, 24)));
+        editor.setWordwrap(prefs.getBoolean("word_wrap", false));
+        editor.setText(content == null ? "" : content);
         EditorUtils.loadXmlConfig(editor);
         if (projectFile.fileType == ProjectFileBean.PROJECT_FILE_TYPE_ACTIVITY
                 && projectLibrary.isEnabled()) {
@@ -148,6 +150,9 @@ public class ViewCodeEditorActivity extends BaseAppCompatActivity {
         }
         menu.add(Menu.NONE, 4, Menu.NONE, "Reload color schemes");
         menu.add(Menu.NONE, 5, Menu.NONE, "Layout Preview");
+        menu.add(Menu.NONE, 6, Menu.NONE, "Toggle word wrap");
+        menu.add(Menu.NONE, 7, Menu.NONE, "Increase text size");
+        menu.add(Menu.NONE, 8, Menu.NONE, "Decrease text size");
         return true;
     }
 
@@ -178,10 +183,33 @@ public class ViewCodeEditorActivity extends BaseAppCompatActivity {
                 toLayoutPreview();
                 return true;
             }
+            case 6 -> {
+                boolean enabled = !prefs.getBoolean("word_wrap", false);
+                prefs.edit().putBoolean("word_wrap", enabled).apply();
+                editor.setWordwrap(enabled);
+                SketchwareUtil.toast(enabled ? "Word wrap enabled" : "Word wrap disabled");
+                return true;
+            }
+            case 7 -> {
+                changeEditorFontSize(2);
+                return true;
+            }
+            case 8 -> {
+                changeEditorFontSize(-2);
+                return true;
+            }
             default -> {
                 return super.onOptionsItemSelected(item);
             }
         }
+    }
+
+    private void changeEditorFontSize(int delta) {
+        int current = prefs.getInt("font_size", 14);
+        int updated = Math.max(10, Math.min(24, current + delta));
+        prefs.edit().putInt("font_size", updated).apply();
+        editor.setTextSize(updated);
+        SketchwareUtil.toast("Text size: " + updated);
     }
 
     private void toAppCompat() {
@@ -246,7 +274,8 @@ public class ViewCodeEditorActivity extends BaseAppCompatActivity {
     }
 
     private boolean isContentModified() {
-        return !content.equals(editor.getText().toString());
+        return !java.util.Objects.equals(content == null ? "" : content,
+                editor.getText().toString());
     }
 
     private void exitWithEditedContent() {
