@@ -6,11 +6,6 @@
         android:title="AI Coding Agent" />
 
     <item
-        android:id="@+id/about_team"
-        android:icon="@drawable/ic_mtrl_team"
-        android:title="About the team" />
-
-    <item
         android:id="@+id/changelog"
         android:icon="@drawable/ic_mtrl_update"
         android:title="@string/about_changelog_title" />
@@ -44,11 +39,6 @@
                 android:id="@+id/social_discord"
                 android:icon="@drawable/ic_discord"
                 android:title="@string/title_discord_community" />
-
-            <item
-                android:id="@+id/social_telegram"
-                android:icon="@drawable/ic_telegram"
-                android:title="@string/title_telegram_community" />
 
             <item
                 android:id="@+id/social_github"
