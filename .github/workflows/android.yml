@@ -74,7 +74,7 @@ jobs:
       - name: Build Release APK
         env:
           SKETCHUB_API_KEY: ${{ secrets.SKETCHUB_API_KEY }}
-        run: gradle assembleRelease
+        run: gradle assembleRelease bundleRelease
 
       - name: Verify Release APK
         shell: bash
@@ -96,6 +96,14 @@ jobs:
           "$BUILD_TOOLS_DIR/apksigner" verify --verbose "$APK_PATH"
           "$BUILD_TOOLS_DIR/zipalign" -c -v 4 "$APK_PATH"
 
+      - name: Verify Release AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB_PATH="app/build/outputs/bundle/release/app-release.aab"
+          test -s "$AAB_PATH"
+          unzip -t "$AAB_PATH" >/dev/null
+          jarsigner -verify -verbose -certs "$AAB_PATH" >/dev/null
       - name: Set short SHA
         id: set_sha
         run: echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
@@ -111,6 +119,16 @@ jobs:
           name: apk-release-${{ steps.set_sha.outputs.short_sha }}
           path: app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk
 
+      - name: Rename AAB with commit hash
+        run: |
+          mv app/build/outputs/bundle/release/app-release.aab \
+             app/build/outputs/bundle/release/app-release-${{ steps.set_sha.outputs.short_sha }}.aab
+
+      - name: Upload Release AAB
+        uses: actions/upload-artifact@v7
+        with:
+          name: aab-release-${{ steps.set_sha.outputs.short_sha }}
+          path: app/build/outputs/bundle/release/app-release-${{ steps.set_sha.outputs.short_sha }}.aab
   aggregateAndSend:
     if: ${{ !startsWith(github.ref, 'refs/heads/wip/') }}
     name: Send APKs to Telegram
