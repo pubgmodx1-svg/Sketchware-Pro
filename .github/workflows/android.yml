@@ -124,6 +124,10 @@ jobs:
             echo "workflow_run=$GITHUB_RUN_ID"
             echo "artifact_type=APK"
           } > app/build/outputs/apk/release/build-info.txt
+          sha256sum --check "$APK_PATH.sha256"
+          grep -Fx "commit=$GITHUB_SHA" app/build/outputs/apk/release/build-info.txt
+          grep -Fx "workflow_run=$GITHUB_RUN_ID" app/build/outputs/apk/release/build-info.txt
+          grep -Fx "artifact_type=APK" app/build/outputs/apk/release/build-info.txt
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v7
@@ -150,6 +154,10 @@ jobs:
             echo "workflow_run=$GITHUB_RUN_ID"
             echo "artifact_type=AAB"
           } > app/build/outputs/bundle/release/build-info.txt
+          sha256sum --check "$AAB_PATH.sha256"
+          grep -Fx "commit=$GITHUB_SHA" app/build/outputs/bundle/release/build-info.txt
+          grep -Fx "workflow_run=$GITHUB_RUN_ID" app/build/outputs/bundle/release/build-info.txt
+          grep -Fx "artifact_type=AAB" app/build/outputs/bundle/release/build-info.txt
 
       - name: Upload Release AAB
         uses: actions/upload-artifact@v7
