@@ -115,14 +115,20 @@ public class CodeEditorEditText extends EditText {
                 }
             }
 
+            int requiredLeftPadding = getPaddingLeft();
             if (lineCount < 100) {
-                setPadding(80, getPaddingTop(), getPaddingRight(), getPaddingBottom());
+                requiredLeftPadding = 80;
             } else if (lineCount < 1000) {
-                setPadding(90, getPaddingTop(), getPaddingRight(), getPaddingBottom());
+                requiredLeftPadding = 90;
             } else if (lineCount < 10000) {
-                setPadding(100, getPaddingTop(), getPaddingRight(), getPaddingBottom());
+                requiredLeftPadding = 100;
             } else if (lineCount < 100000) {
-                setPadding(110, getPaddingTop(), getPaddingRight(), getPaddingBottom());
+                requiredLeftPadding = 110;
+            }
+
+            // Avoid requesting a new layout on every draw when the gutter is unchanged.
+            if (requiredLeftPadding != getPaddingLeft()) {
+                setPadding(requiredLeftPadding, getPaddingTop(), getPaddingRight(), getPaddingBottom());
             }
         }
 
