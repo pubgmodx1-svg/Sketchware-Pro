@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.text.Layout;
 import android.util.AttributeSet;
 import android.widget.EditText;
 
@@ -91,44 +92,50 @@ public class CodeEditorEditText extends EditText {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (lineHighlightEnabled) {
-            int lineNumber = getLayout().getLineForOffset(getSelectionStart());
-            getLineBounds(lineNumber, lineBounds);
-
-            canvas.drawRect(lineBounds, highlightPaint);
-        }
-
-        if (LINES) {
-
-            int baseline;
-            int lineCount = getLineCount();
-            int lineNumber = 1;
-
-            for (int i = 0; i < lineCount; ++i) {
-                baseline = getLineBounds(i, null);
-                if (i == 0) {
-                    canvas.drawText("" + lineNumber, rect.left + 10, baseline, paint);
-                    ++lineNumber;
-                } else if (getText().charAt(getLayout().getLineStart(i) - 1) == '\n') {
-                    canvas.drawText("" + lineNumber, rect.left + 10, baseline, paint);
-                    ++lineNumber;
+        // TextView may not have created its Layout yet during an early draw.
+        // Keep drawing the editor normally until layout information is available.
+        Layout textLayout = getLayout();
+        if (textLayout != null) {
+            if (lineHighlightEnabled) {
+                int selectionStart = getSelectionStart();
+                int textLength = getText().length();
+                if (selectionStart >= 0 && selectionStart <= textLength) {
+                    int lineNumber = textLayout.getLineForOffset(selectionStart);
+                    getLineBounds(lineNumber, lineBounds);
+                    canvas.drawRect(lineBounds, highlightPaint);
                 }
             }
 
-            int requiredLeftPadding = getPaddingLeft();
-            if (lineCount < 100) {
-                requiredLeftPadding = 80;
-            } else if (lineCount < 1000) {
-                requiredLeftPadding = 90;
-            } else if (lineCount < 10000) {
-                requiredLeftPadding = 100;
-            } else if (lineCount < 100000) {
-                requiredLeftPadding = 110;
-            }
+            if (LINES) {
+                int lineCount = textLayout.getLineCount();
+                int lineNumber = 1;
 
-            // Avoid requesting a new layout on every draw when the gutter is unchanged.
-            if (requiredLeftPadding != getPaddingLeft()) {
-                setPadding(requiredLeftPadding, getPaddingTop(), getPaddingRight(), getPaddingBottom());
+                for (int i = 0; i < lineCount; ++i) {
+                    int baseline = getLineBounds(i, null);
+                    int lineStart = textLayout.getLineStart(i);
+                    if (i == 0 || (lineStart > 0
+                            && lineStart <= getText().length()
+                            && getText().charAt(lineStart - 1) == '\n')) {
+                        canvas.drawText("" + lineNumber, rect.left + 10, baseline, paint);
+                        ++lineNumber;
+                    }
+                }
+
+                int requiredLeftPadding = getPaddingLeft();
+                if (lineCount < 100) {
+                    requiredLeftPadding = 80;
+                } else if (lineCount < 1000) {
+                    requiredLeftPadding = 90;
+                } else if (lineCount < 10000) {
+                    requiredLeftPadding = 100;
+                } else if (lineCount < 100000) {
+                    requiredLeftPadding = 110;
+                }
+
+                // Avoid requesting a new layout on every draw when the gutter is unchanged.
+                if (requiredLeftPadding != getPaddingLeft()) {
+                    setPadding(requiredLeftPadding, getPaddingTop(), getPaddingRight(), getPaddingBottom());
+                }
             }
         }
 
