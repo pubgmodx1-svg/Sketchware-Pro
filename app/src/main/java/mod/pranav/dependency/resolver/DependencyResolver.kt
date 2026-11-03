@@ -6,9 +6,9 @@ import com.android.tools.r8.D8
 import com.android.tools.r8.D8Command
 import com.android.tools.r8.OutputMode
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
 import mod.hey.studios.build.BuildSettings
-import mod.hey.studios.util.Helper
 import mod.jbk.build.BuiltInLibraries
 import org.cosmic.ide.dependency.resolver.api.Artifact
 import org.cosmic.ide.dependency.resolver.api.EventReciever
@@ -66,38 +66,63 @@ class DependencyResolver(
             Files.createDirectories(repositoriesJson.parent)
             repositoriesJson.writeText(DEFAULT_REPOS)
         }
-        val gson = Gson()
-        val configuredRepositories: ArrayList<HashMap<String, Any>> =
-            try {
-                gson.fromJson(repositoriesJson.readText(), Helper.TYPE_MAP_LIST)
-                    ?: gson.fromJson(DEFAULT_REPOS, Helper.TYPE_MAP_LIST)
-            } catch (_: Exception) {
-                // Keep a malformed user file untouched and use the built-in defaults in memory.
-                gson.fromJson(DEFAULT_REPOS, Helper.TYPE_MAP_LIST)
-            }
-        if (configuredRepositories.none { it["url"] == GOOGLE_MAVEN_URL }) {
-            configuredRepositories.add(
-                hashMapOf("url" to GOOGLE_MAVEN_URL, "name" to "Google Maven")
-            )
-            repositoriesJson.writeText(Gson().toJson(configuredRepositories))
+        var configuredRepositories = try {
+            parseRepositories(repositoriesJson.readText())
+        } catch (_: Exception) {
+            // Keep a malformed user file untouched and use the built-in defaults in memory.
+            parseRepositories(DEFAULT_REPOS)
         }
-        configuredRepositories.forEach {
-            val url: String? = it["url"] as String?
-            if (url != null) {
-                repositories.add(object : Repository {
-                    override fun getName(): String {
-                        return it["name"] as String
-                    }
+        if (configuredRepositories.none { it.first == GOOGLE_MAVEN_URL }) {
+            configuredRepositories = configuredRepositories + (GOOGLE_MAVEN_URL to "Google Maven")
+            repositoriesJson.writeText(
+                Gson().toJson(configuredRepositories.map { mapOf("url" to it.first, "name" to it.second) })
+            )
+        }
+        configuredRepositories.forEach { (url, name) ->
+            repositories.add(object : Repository {
+                override fun getName(): String {
+                    return name
+                }
 
-                    override fun getURL(): String {
-                        return if (url.endsWith("/")) {
-                            url.substringBeforeLast("/")
-                        } else {
-                            url
-                        }
+                override fun getURL(): String {
+                    return if (url.endsWith("/")) {
+                        url.substringBeforeLast("/")
+                    } else {
+                        url
                     }
-                })
+                }
+            })
+        }
+    }
+
+    /**
+     * Reads repository entries without unsafe casts from user-editable JSON.
+     * Invalid entries are ignored; malformed JSON is handled by the caller.
+     */
+    private fun parseRepositories(content: String): List<Pair<String, String>> {
+        return JsonParser.parseString(content).asJsonArray.mapNotNull { element ->
+            if (!element.isJsonObject) return@mapNotNull null
+
+            val repository = element.asJsonObject
+            val urlElement = repository.get("url")
+            if (urlElement == null || !urlElement.isJsonPrimitive
+                || !urlElement.asJsonPrimitive.isString
+            ) {
+                return@mapNotNull null
             }
+
+            val url = urlElement.asString.trim()
+            if (url.isEmpty()) return@mapNotNull null
+
+            val nameElement = repository.get("name")
+            val name = if (nameElement != null && nameElement.isJsonPrimitive
+                && nameElement.asJsonPrimitive.isString
+            ) {
+                nameElement.asString
+            } else {
+                url
+            }
+            url to name
         }
     }
 
