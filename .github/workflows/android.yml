@@ -118,7 +118,10 @@ jobs:
         run: |
           set -euo pipefail
           APK_PATH="app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk"
-          sha256sum "$APK_PATH" > "$APK_PATH.sha256"
+          (
+            cd "$(dirname "$APK_PATH")"
+            sha256sum "$(basename "$APK_PATH")" > "$(basename "$APK_PATH").sha256"
+          )
           {
             echo "commit=$GITHUB_SHA"
             echo "workflow_run=$GITHUB_RUN_ID"
@@ -148,7 +151,10 @@ jobs:
         run: |
           set -euo pipefail
           AAB_PATH="app/build/outputs/bundle/release/app-release-${{ steps.set_sha.outputs.short_sha }}.aab"
-          sha256sum "$AAB_PATH" > "$AAB_PATH.sha256"
+          (
+            cd "$(dirname "$AAB_PATH")"
+            sha256sum "$(basename "$AAB_PATH")" > "$(basename "$AAB_PATH").sha256"
+          )
           {
             echo "commit=$GITHUB_SHA"
             echo "workflow_run=$GITHUB_RUN_ID"
