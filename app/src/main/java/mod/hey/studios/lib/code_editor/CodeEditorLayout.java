@@ -611,43 +611,60 @@ public class CodeEditorLayout extends LinearLayout implements TextWatcher {
     //Optimized highlighting by Editor in Github
     private void highlightText() {
         EditText textView = editText;
+        ScrollView editorScrollView = scrollView;
 
-        // Get visible extent
-        int top = scrollView.getScrollY();
-        int height = scrollView.getHeight();
+        // A delayed highlight can run before layout or after the editor is detached.
+        if (textView == null || editorScrollView == null || highlightList == null) {
+            return;
+        }
 
-        int line = textView.getLayout().getLineForVertical(top);
-        int start = textView.getLayout().getLineStart(line);
-        int first = textView.getLayout().getLineStart(line + 1);
+        Layout layout = textView.getLayout();
+        if (layout == null || layout.getLineCount() == 0) {
+            return;
+        }
 
-        line = textView.getLayout().getLineForVertical(top + height);
-        int end = textView.getLayout().getLineEnd(line);
-        int last = (line == 0) ? end :
-                textView.getLayout().getLineStart(line - 1);
-
-        // Move selection if outside range
-        if (textView.getSelectionStart() < start)
-            textView.setSelection(first);
-
-        if (textView.getSelectionStart() > end)
-            textView.setSelection(last);
-
-        // Get editable
         Editable editable = textView.getEditableText();
+        int textLength = editable.length();
+        int lineCount = layout.getLineCount();
 
-        // Get current spans
+        // Clamp the visible line range to valid layout indices. In particular,
+        // the last visible line may also be the final line in the document.
+        int top = Math.max(0, editorScrollView.getScrollY());
+        int height = Math.max(0, editorScrollView.getHeight());
+        int firstLine = Math.max(0, Math.min(layout.getLineForVertical(top), lineCount - 1));
+        int lastLine = Math.max(firstLine,
+                Math.min(layout.getLineForVertical(top + height), lineCount - 1));
+
+        int start = Math.max(0, Math.min(layout.getLineStart(firstLine), textLength));
+        int first = Math.max(0, Math.min(
+                firstLine + 1 < lineCount
+                        ? layout.getLineStart(firstLine + 1)
+                        : layout.getLineEnd(firstLine),
+                textLength
+        ));
+        int end = Math.max(start, Math.min(layout.getLineEnd(lastLine), textLength));
+        int last = lastLine == 0
+                ? end
+                : Math.max(0, Math.min(layout.getLineStart(lastLine - 1), textLength));
+
+        // Move the cursor only when it is valid and outside the visible range.
+        int selectionStart = textView.getSelectionStart();
+        if (selectionStart >= 0 && selectionStart < start) {
+            textView.setSelection(first);
+        } else if (selectionStart > end) {
+            textView.setSelection(last);
+        }
+
+        // Remove existing syntax spans before applying the visible portion again.
         ForegroundColorSpan[] spans =
-                editable.getSpans(0, editable.length(),/*start, end,*/ ForegroundColorSpan.class);
-        // Remove spans
-        for (ForegroundColorSpan span : spans)
+                editable.getSpans(0, textLength, ForegroundColorSpan.class);
+        for (ForegroundColorSpan span : spans) {
             editable.removeSpan(span);
+        }
 
-        Matcher matcher;
-
-        // Highlight it
+        // Highlight only the visible text range.
         for (ColorScheme colorScheme : highlightList) {
-
-            matcher = colorScheme.pattern.matcher(editable);
+            Matcher matcher = colorScheme.pattern.matcher(editable);
             matcher.region(start, end);
             while (matcher.find()) {
                 ForegroundColorSpan span = new ForegroundColorSpan(colorScheme.color);
