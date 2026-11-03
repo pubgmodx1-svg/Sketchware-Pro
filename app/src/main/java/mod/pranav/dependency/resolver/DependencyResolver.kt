@@ -66,8 +66,15 @@ class DependencyResolver(
             Files.createDirectories(repositoriesJson.parent)
             repositoriesJson.writeText(DEFAULT_REPOS)
         }
+        val gson = Gson()
         val configuredRepositories: ArrayList<HashMap<String, Any>> =
-            Gson().fromJson(repositoriesJson.readText(), Helper.TYPE_MAP_LIST)
+            try {
+                gson.fromJson(repositoriesJson.readText(), Helper.TYPE_MAP_LIST)
+                    ?: gson.fromJson(DEFAULT_REPOS, Helper.TYPE_MAP_LIST)
+            } catch (_: Exception) {
+                // Keep a malformed user file untouched and use the built-in defaults in memory.
+                gson.fromJson(DEFAULT_REPOS, Helper.TYPE_MAP_LIST)
+            }
         if (configuredRepositories.none { it["url"] == GOOGLE_MAVEN_URL }) {
             configuredRepositories.add(
                 hashMapOf("url" to GOOGLE_MAVEN_URL, "name" to "Google Maven")
