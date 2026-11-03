@@ -113,22 +113,52 @@ jobs:
           mv app/build/outputs/apk/release/app-release.apk \
              app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk
 
+      - name: Generate APK checksum and build metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_PATH="app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk"
+          sha256sum "$APK_PATH" > "$APK_PATH.sha256"
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "workflow_run=$GITHUB_RUN_ID"
+            echo "artifact_type=APK"
+          } > app/build/outputs/apk/release/build-info.txt
+
       - name: Upload Release APK
         uses: actions/upload-artifact@v7
         with:
           name: apk-release-${{ steps.set_sha.outputs.short_sha }}
-          path: app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk
+          path: |
+            app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk
+            app/build/outputs/apk/release/app-release-${{ steps.set_sha.outputs.short_sha }}.apk.sha256
+            app/build/outputs/apk/release/build-info.txt
 
       - name: Rename AAB with commit hash
         run: |
           mv app/build/outputs/bundle/release/app-release.aab \
              app/build/outputs/bundle/release/app-release-${{ steps.set_sha.outputs.short_sha }}.aab
 
+      - name: Generate AAB checksum and build metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          AAB_PATH="app/build/outputs/bundle/release/app-release-${{ steps.set_sha.outputs.short_sha }}.aab"
+          sha256sum "$AAB_PATH" > "$AAB_PATH.sha256"
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "workflow_run=$GITHUB_RUN_ID"
+            echo "artifact_type=AAB"
+          } > app/build/outputs/bundle/release/build-info.txt
+
       - name: Upload Release AAB
         uses: actions/upload-artifact@v7
         with:
           name: aab-release-${{ steps.set_sha.outputs.short_sha }}
-          path: app/build/outputs/bundle/release/app-release-${{ steps.set_sha.outputs.short_sha }}.aab
+          path: |
+            app/build/outputs/bundle/release/app-release-${{ steps.set_sha.outputs.short_sha }}.aab
+            app/build/outputs/bundle/release/app-release-${{ steps.set_sha.outputs.short_sha }}.aab.sha256
+            app/build/outputs/bundle/release/build-info.txt
   aggregateAndSend:
     if: ${{ !startsWith(github.ref, 'refs/heads/wip/') }}
     name: Send APKs to Telegram
