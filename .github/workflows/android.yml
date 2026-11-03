@@ -104,8 +104,32 @@ jobs:
           test -s "$AAB_PATH"
           unzip -t "$AAB_PATH" >/dev/null
 
-          # A successful unzip check alone does not prove that the bundle is signed.
-          SIGNATURE_ENTRIES="$(unzip -Z1 "$AAB_PATH" | grep -Ei '^META-INF/[^/]+\\.(SF|RSA|DSA|EC)
+          # Require standard JAR signature files; archive integrity alone is insufficient.
+          unzip -Z1 "$AAB_PATH" > "$RUNNER_TEMP/aab-entries.txt"
+          if ! grep -qi 'META-INF/.*[.]SF$' "$RUNNER_TEMP/aab-entries.txt"; then
+            echo "AAB signature .SF file is missing."
+            exit 1
+          fi
+          if ! grep -qi 'META-INF/.*[.]RSA$' "$RUNNER_TEMP/aab-entries.txt"; then
+            if ! grep -qi 'META-INF/.*[.]DSA$' "$RUNNER_TEMP/aab-entries.txt"; then
+              if ! grep -qi 'META-INF/.*[.]EC$' "$RUNNER_TEMP/aab-entries.txt"; then
+                echo "AAB signature block (.RSA, .DSA or .EC) is missing."
+                exit 1
+              fi
+            fi
+          fi
+          VERIFY_LOG="$RUNNER_TEMP/aab-signature-verification.log"
+          if jarsigner -verify -verbose -certs "$AAB_PATH" >"$VERIFY_LOG" 2>&1; then
+            if ! grep -qi 'jar verified' "$VERIFY_LOG"; then
+              cat "$VERIFY_LOG"
+              echo "AAB was not reported as signed and verified."
+              exit 1
+            fi
+          else
+            cat "$VERIFY_LOG"
+            echo "AAB signature verification failed."
+            exit 1
+          fi
       - name: Set short SHA
         id: set_sha
         run: echo "short_sha=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
