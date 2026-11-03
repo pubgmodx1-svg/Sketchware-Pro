@@ -19,6 +19,7 @@ import org.cosmic.ide.dependency.resolver.repositories
 import pro.sketchware.utility.FileUtil
 import java.io.File
 import java.io.IOException
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -112,18 +113,30 @@ class DependencyResolver(
             }
 
             val url = urlElement.asString.trim()
-            if (url.isEmpty()) return@mapNotNull null
+            if (!isHttpRepositoryUrl(url)) return@mapNotNull null
 
             val nameElement = repository.get("name")
             val name = if (nameElement != null && nameElement.isJsonPrimitive
                 && nameElement.asJsonPrimitive.isString
             ) {
-                nameElement.asString
+                nameElement.asString.trim().ifEmpty { url }
             } else {
                 url
             }
             url to name
         }
+    }
+
+    private fun isHttpRepositoryUrl(value: String): Boolean {
+        val uri = try {
+            URI(value)
+        } catch (_: Exception) {
+            return false
+        }
+        val scheme = uri.scheme ?: return false
+        return (scheme.equals("https", ignoreCase = true)
+                || scheme.equals("http", ignoreCase = true))
+                && !uri.host.isNullOrBlank()
     }
 
     open class DependencyResolverCallback : EventReciever() {
