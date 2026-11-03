@@ -18,6 +18,7 @@ import org.cosmic.ide.dependency.resolver.getArtifact
 import org.cosmic.ide.dependency.resolver.repositories
 import pro.sketchware.utility.FileUtil
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -276,10 +277,20 @@ class DependencyResolver(
     }
 
     private fun unzip(path: Path) {
+        val destinationRoot = path.parent.toAbsolutePath().normalize()
+        Files.createDirectories(destinationRoot)
+
         val zipFile = ZipFile(path.toFile())
         zipFile.use { zip ->
             zip.entries().asSequence().forEach { entry ->
-                val entryDestination = path.parent.resolve(entry.name)
+                val entryDestination = destinationRoot.resolve(entry.name).normalize()
+
+                // A downloaded AAR is untrusted input. Do not allow ZIP entries to
+                // escape the dependency's extraction directory (ZIP Slip).
+                if (!entryDestination.startsWith(destinationRoot)) {
+                    throw IOException("Invalid archive entry path: ${entry.name}")
+                }
+
                 if (entry.isDirectory) {
                     Files.createDirectories(entryDestination)
                 } else {
